@@ -1812,6 +1812,8 @@ circpad_estimate_circ_rtt_on_send(circuit_t *circ,
 void
 circpad_cell_event_nonpadding_sent(circuit_t *on_circ)
 {
+  circpad_trace_event(__func__, on_circ);
+
   /* Update global cell count */
   circpad_global_nonpadding_sent++;
 
@@ -1902,6 +1904,8 @@ circpad_check_received_cell(cell_t *cell, circuit_t *circ,
 void
 circpad_cell_event_nonpadding_received(circuit_t *on_circ)
 {
+  circpad_trace_event(__func__, on_circ);
+
   FOR_EACH_ACTIVE_CIRCUIT_MACHINE_BEGIN(i, on_circ) {
     /* First, update any timestamps */
     on_circ->padding_info[i]->last_cell_time_sec = approx_time();
@@ -1923,6 +1927,8 @@ circpad_cell_event_nonpadding_received(circuit_t *on_circ)
 void
 circpad_cell_event_padding_sent(circuit_t *on_circ)
 {
+  circpad_trace_event(__func__, on_circ);
+
   FOR_EACH_ACTIVE_CIRCUIT_MACHINE_BEGIN(i, on_circ) {
     /* Check to see if we've run out of tokens for this state already,
      * and if not, check for other state transitions */
@@ -1949,6 +1955,8 @@ circpad_cell_event_padding_sent(circuit_t *on_circ)
 void
 circpad_cell_event_padding_received(circuit_t *on_circ)
 {
+  circpad_trace_event(__func__, on_circ);
+
   /* identical to padding sent */
   FOR_EACH_ACTIVE_CIRCUIT_MACHINE_BEGIN(i, on_circ) {
     on_circ->padding_info[i]->last_cell_time_sec = approx_time();
@@ -2245,6 +2253,8 @@ circpad_add_matching_machines(origin_circuit_t *on_circ,
 void
 circpad_machine_event_circ_added_hop(origin_circuit_t *on_circ)
 {
+  circpad_trace_event(__func__, TO_CIRCUIT(on_circ));
+
   /* Since our padding conditions do not specify a max_hops,
    * all we can do is add machines here */
   circpad_add_matching_machines(on_circ, origin_padding_machines);
@@ -2259,6 +2269,8 @@ circpad_machine_event_circ_added_hop(origin_circuit_t *on_circ)
 void
 circpad_machine_event_circ_built(origin_circuit_t *circ)
 {
+  circpad_trace_event(__func__, TO_CIRCUIT(circ));
+
   circpad_shutdown_old_machines(circ);
   circpad_add_matching_machines(circ, origin_padding_machines);
 }
@@ -2272,6 +2284,8 @@ circpad_machine_event_circ_built(origin_circuit_t *circ)
 void
 circpad_machine_event_circ_purpose_changed(origin_circuit_t *circ)
 {
+  circpad_trace_event(__func__, TO_CIRCUIT(circ));
+
   circpad_shutdown_old_machines(circ);
   circpad_add_matching_machines(circ, origin_padding_machines);
 }
@@ -2286,6 +2300,8 @@ circpad_machine_event_circ_purpose_changed(origin_circuit_t *circ)
 void
 circpad_machine_event_circ_has_no_relay_early(origin_circuit_t *circ)
 {
+  circpad_trace_event(__func__, TO_CIRCUIT(circ));
+
   circpad_shutdown_old_machines(circ);
   circpad_add_matching_machines(circ, origin_padding_machines);
 }
@@ -2301,6 +2317,8 @@ circpad_machine_event_circ_has_no_relay_early(origin_circuit_t *circ)
 void
 circpad_machine_event_circ_has_streams(origin_circuit_t *circ)
 {
+  circpad_trace_event(__func__, TO_CIRCUIT(circ));
+
   circpad_shutdown_old_machines(circ);
   circpad_add_matching_machines(circ, origin_padding_machines);
 }
@@ -2316,6 +2334,8 @@ circpad_machine_event_circ_has_streams(origin_circuit_t *circ)
 void
 circpad_machine_event_circ_has_no_streams(origin_circuit_t *circ)
 {
+  circpad_trace_event(__func__, TO_CIRCUIT(circ));
+
   circpad_shutdown_old_machines(circ);
   circpad_add_matching_machines(circ, origin_padding_machines);
 }
@@ -3127,6 +3147,21 @@ circpad_free_all(void)
     } SMARTLIST_FOREACH_END(m);
     smartlist_free(relay_padding_machines);
   }
+}
+
+void
+circpad_trace_event(const char *event, const circuit_t *circ)
+{
+  uint32_t circ_id = 0;
+
+  if (CIRCUIT_IS_ORIGIN(circ)) {
+    circ_id = CONST_TO_ORIGIN_CIRCUIT(circ)->global_identifier;
+
+    log_fn(LOG_INFO, LD_CIRC,
+           "timestamp=%"PRIu64" source=client client_circ_id=%d event=%s",
+           monotime_absolute_nsec(), circ_id, event);
+  }
+  return;
 }
 
 /* Serialization */
