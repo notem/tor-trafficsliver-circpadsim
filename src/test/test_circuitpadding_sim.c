@@ -318,10 +318,9 @@ test_circuitpadding_sim_main(void *arg)
 
   circpad_sim_estimate_latency();
 
-  // sanity check on estimated latency: (0,1s)
+  // sanity check on estimated latency: can never be negative
   tt_int_op(sim_latency_mean, OP_GT, 0);
-  tt_int_op(sim_latency_mean, OP_LT, 1*TOR_NSEC_PER_USEC*TOR_USEC_PER_SEC);
-
+  
   circpad_sim_main_loop();
 
   done:
