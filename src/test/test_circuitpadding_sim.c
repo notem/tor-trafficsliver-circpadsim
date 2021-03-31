@@ -625,7 +625,6 @@ int
 get_circpad_trace(const char* loc, smartlist_t* trace)
 {
   char *line, *circpad_sim_trace_buffer, *circpad_sim_trace_read_rest;
-  int64_t first_timestamp = -1;
 
   if (circpad_sim_arg_client_trace && circpad_sim_arg_relay_trace) {
     circpad_sim_trace_buffer = read_file_to_str(loc, 0, NULL);
@@ -648,13 +647,9 @@ get_circpad_trace(const char* loc, smartlist_t* trace)
     circpad_sim_event e;
     if (find_circpad_sim_event(line, &e)) {
       circpad_sim_event *event = tor_malloc_zero(sizeof(circpad_sim_event));
-      /* We must normalize each side's timestamps to start at 0 */
-      if (first_timestamp == -1) {
-        first_timestamp = e.timestamp;
-      }
       event->type = e.type;
       event->event = e.event;
-      event->timestamp = e.timestamp - first_timestamp;
+      event->timestamp = e.timestamp;
       circpad_sim_push_event(event, trace);
     }
   }
