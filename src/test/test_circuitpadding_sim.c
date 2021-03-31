@@ -590,9 +590,6 @@ circpad_sim_main_loop(void)
         circpad_cell_event_nonpadding_received(next_side);
         break;
       case CIRCPAD_SIM_INTERNAL_EVENT_NEGOTIATE:
-        // need to manually tell circpad we got a nonpadding cell,
-        // so it logs it.
-        circpad_cell_event_nonpadding_received(next_side);
         circpad_handle_padding_negotiate(relay_side, next_event->internal);
         break;
       case CIRCPAD_SIM_INTERNAL_EVENT_NEGOTIATED:
