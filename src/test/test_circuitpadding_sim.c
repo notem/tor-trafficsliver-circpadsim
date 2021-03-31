@@ -781,15 +781,18 @@ circuit_package_relay_cell_mock(cell_t *cell, circuit_t *circ,
       // the relay wants to reply to a padding negotiation request
         e->type = CIRCPAD_SIM_INTERNAL_EVENT_NEGOTIATED;
         e->event = "RELAY_COMMAND_PADDING_NEGOTIATED";
+        // BUG: make this virtually instant to prevent machine syncronization issues
+        e->timestamp = (MONOTIME_RUN_DELTA) + 1;
     } else {
       // the relay wants to send a padding cell to the client
       e->type = CIRCPAD_SIM_CELL_EVENT_PADDING_RECV;
       e->event = CIRCPAD_SIM_CELL_EVENT_PADDING_RECV_STR;
+      // schedule event at client at some point in the future, note that
+      // timestamps are relative to the starting time, so we need to
+      // substract the starting time
+      e->timestamp = (MONOTIME_RUN_DELTA) + circpad_sim_sample_latency();
     }
-    // schedule event at client at some point in the future, note that
-    // timestamps are relative to the starting time, so we need to
-    // substract the starting time
-    e->timestamp = (MONOTIME_RUN_DELTA) + circpad_sim_sample_latency();
+
     circpad_sim_push_event(e, client_trace);
     log_debug(LD_CIRC, "%012"PRId64" mock relay %s to client_trace at %"PRId64,
       MONOTIME_RUN_DELTA, e->event, e->timestamp);
