@@ -313,6 +313,17 @@ main(int c, const char **v)
       if (den == 0 || num == 0 || num > den) {
         printf("--fraction expects a valid fraction as an input.\n");
       }
+    } else if (!strcmp(v[i], "--circpadsim")) {
+      if (i + 4 > c) {
+        printf("not enough arguments for --circpadsim. "
+               "expect %s %s, exiting.\n", v[0],
+               " --circpadsim <client-trace> <relay-trace> <client_cirdid>");
+        return 1;
+      }
+      circpad_sim_arg_client_trace = v[i+1];
+      circpad_sim_arg_relay_trace = v[i+2];
+      circpad_sim_client_circid = (uint32_t)strtol(v[i+3], NULL, 10);
+      i += 2;
     } else {
       v[i_out++] = v[i];
     }
