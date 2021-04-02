@@ -34,7 +34,7 @@ circpad_negotiate_new(void)
   circpad_negotiate_t *val = trunnel_calloc(1, sizeof(circpad_negotiate_t));
   if (NULL == val)
     return NULL;
-  val->command = CIRCPAD_COMMAND_START;
+  val->command = CIRCPAD_COMMAND_LOG;
   return val;
 }
 
@@ -79,7 +79,7 @@ circpad_negotiate_get_command(const circpad_negotiate_t *inp)
 int
 circpad_negotiate_set_command(circpad_negotiate_t *inp, uint8_t val)
 {
-  if (! ((val == CIRCPAD_COMMAND_START || val == CIRCPAD_COMMAND_STOP))) {
+  if (! ((val == CIRCPAD_COMMAND_LOG || val == CIRCPAD_COMMAND_START || val == CIRCPAD_COMMAND_STOP))) {
      TRUNNEL_SET_ERROR_CODE(inp);
      return -1;
   }
@@ -123,6 +123,17 @@ circpad_negotiate_set_machine_ctr(circpad_negotiate_t *inp, uint32_t val)
   inp->machine_ctr = val;
   return 0;
 }
+uint32_t
+circpad_negotiate_get_client_circid(const circpad_negotiate_t *inp)
+{
+  return inp->client_circid;
+}
+int
+circpad_negotiate_set_client_circid(circpad_negotiate_t *inp, uint32_t val)
+{
+  inp->client_circid = val;
+  return 0;
+}
 const char *
 circpad_negotiate_check(const circpad_negotiate_t *obj)
 {
@@ -132,7 +143,7 @@ circpad_negotiate_check(const circpad_negotiate_t *obj)
     return "A set function failed on this object";
   if (! (obj->version == 0))
     return "Integer out of bounds";
-  if (! (obj->command == CIRCPAD_COMMAND_START || obj->command == CIRCPAD_COMMAND_STOP))
+  if (! (obj->command == CIRCPAD_COMMAND_LOG || obj->command == CIRCPAD_COMMAND_START || obj->command == CIRCPAD_COMMAND_STOP))
     return "Integer out of bounds";
   if (! (obj->echo_request == 0 || obj->echo_request == 1))
     return "Integer out of bounds";
@@ -151,7 +162,7 @@ circpad_negotiate_encoded_len(const circpad_negotiate_t *obj)
   /* Length of u8 version IN [0] */
   result += 1;
 
-  /* Length of u8 command IN [CIRCPAD_COMMAND_START, CIRCPAD_COMMAND_STOP] */
+  /* Length of u8 command IN [CIRCPAD_COMMAND_LOG, CIRCPAD_COMMAND_START, CIRCPAD_COMMAND_STOP] */
   result += 1;
 
   /* Length of u8 machine_type */
@@ -161,6 +172,9 @@ circpad_negotiate_encoded_len(const circpad_negotiate_t *obj)
   result += 1;
 
   /* Length of u32 machine_ctr */
+  result += 4;
+
+  /* Length of u32 client_circid */
   result += 4;
   return result;
 }
@@ -196,7 +210,7 @@ circpad_negotiate_encode(uint8_t *output, const size_t avail, const circpad_nego
   trunnel_set_uint8(ptr, (obj->version));
   written += 1; ptr += 1;
 
-  /* Encode u8 command IN [CIRCPAD_COMMAND_START, CIRCPAD_COMMAND_STOP] */
+  /* Encode u8 command IN [CIRCPAD_COMMAND_LOG, CIRCPAD_COMMAND_START, CIRCPAD_COMMAND_STOP] */
   trunnel_assert(written <= avail);
   if (avail - written < 1)
     goto truncated;
@@ -222,6 +236,13 @@ circpad_negotiate_encode(uint8_t *output, const size_t avail, const circpad_nego
   if (avail - written < 4)
     goto truncated;
   trunnel_set_uint32(ptr, trunnel_htonl(obj->machine_ctr));
+  written += 4; ptr += 4;
+
+  /* Encode u32 client_circid */
+  trunnel_assert(written <= avail);
+  if (avail - written < 4)
+    goto truncated;
+  trunnel_set_uint32(ptr, trunnel_htonl(obj->client_circid));
   written += 4; ptr += 4;
 
 
@@ -266,11 +287,11 @@ circpad_negotiate_parse_into(circpad_negotiate_t *obj, const uint8_t *input, con
   if (! (obj->version == 0))
     goto fail;
 
-  /* Parse u8 command IN [CIRCPAD_COMMAND_START, CIRCPAD_COMMAND_STOP] */
+  /* Parse u8 command IN [CIRCPAD_COMMAND_LOG, CIRCPAD_COMMAND_START, CIRCPAD_COMMAND_STOP] */
   CHECK_REMAINING(1, truncated);
   obj->command = (trunnel_get_uint8(ptr));
   remaining -= 1; ptr += 1;
-  if (! (obj->command == CIRCPAD_COMMAND_START || obj->command == CIRCPAD_COMMAND_STOP))
+  if (! (obj->command == CIRCPAD_COMMAND_LOG || obj->command == CIRCPAD_COMMAND_START || obj->command == CIRCPAD_COMMAND_STOP))
     goto fail;
 
   /* Parse u8 machine_type */
@@ -288,6 +309,11 @@ circpad_negotiate_parse_into(circpad_negotiate_t *obj, const uint8_t *input, con
   /* Parse u32 machine_ctr */
   CHECK_REMAINING(4, truncated);
   obj->machine_ctr = trunnel_ntohl(trunnel_get_uint32(ptr));
+  remaining -= 4; ptr += 4;
+
+  /* Parse u32 client_circid */
+  CHECK_REMAINING(4, truncated);
+  obj->client_circid = trunnel_ntohl(trunnel_get_uint32(ptr));
   remaining -= 4; ptr += 4;
   trunnel_assert(ptr + remaining == input + len_in);
   return len_in - remaining;
