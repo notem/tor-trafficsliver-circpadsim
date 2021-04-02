@@ -244,6 +244,15 @@ struct circuit_t {
    * that STOP commands actually correspond to the current machine,
    * and not a previous one. */
   uint32_t padding_machine_ctr;
+
+  /**
+   * For relay-side researcher machines, this field is filled in with the
+   * origin circuit's client-side global identifier.
+   *
+   * When it is non-zero on the relay side, we log all circpad events
+   * at info level.
+   */
+  uint32_t padding_circid;
 };
 
 #endif /* !defined(CIRCUIT_ST_H) */
