@@ -192,6 +192,9 @@ const char *circpad_sim_arg_client_trace, *circpad_sim_arg_relay_trace;
 /* Store the client circid for output log correctness */
 uint32_t circpad_sim_client_circid;
 
+/* Max number of events to simulate (0 = infinite) */
+uint32_t circpad_sim_max_events;
+
 // testing-related variables to make the mocking of the rest of tor work
 static channel_t dummy_channel;
 static circuit_t *client_side;
@@ -531,9 +534,10 @@ circpad_sim_continue(circpad_sim_event **next_event, circuit_t **next_side)
 static void
 circpad_sim_main_loop(void)
 {
-  circpad_sim_event *next_event;
+  circpad_sim_event *next_event = 0;
   circuit_t *next_side;
   cell_t *cell;
+  uint32_t num_events = 0;
 
   // The loop is simple:
   // - Find the next event and side (client or relay), taking into account that
@@ -544,6 +548,12 @@ circpad_sim_main_loop(void)
   //   circpad_circuit_state() report the state change.
   while (circpad_sim_continue(&next_event, &next_side)) {
     timers_advance_and_run(next_event->timestamp - MONOTIME_RUN_DELTA);
+
+    // support a maximum number of simulated events
+    if (circpad_sim_max_events > 0 && num_events >= circpad_sim_max_events) {
+      break;
+    }
+    num_events++;
 
     switch (next_event->type) {
       case CIRCPAD_SIM_MACHINE_EVENT_CIRC_BUILT:
@@ -611,7 +621,8 @@ circpad_sim_main_loop(void)
       default:
         tor_assertf(0, "unknown sim event type, this should never happen");
     }
-
+  }
+  if (next_event != 0) {
     tor_free(next_event->internal);
     tor_free(next_event);
   }

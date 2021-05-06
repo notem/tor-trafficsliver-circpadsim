@@ -2,6 +2,6 @@
 #define TOR_CIRCUITPADDING_SIM_ARG_H
 
 extern const char *circpad_sim_arg_client_trace, *circpad_sim_arg_relay_trace;
-extern uint32_t circpad_sim_client_circid;
+extern uint32_t circpad_sim_client_circid, circpad_sim_max_events;
 
 #endif /* !defined(TOR_CIRCUITPADDING_SIM_ARS_) */
