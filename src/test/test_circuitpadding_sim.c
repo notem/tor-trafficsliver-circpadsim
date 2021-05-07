@@ -127,6 +127,8 @@ static void helper_add_relay_machine_mock(void);
 // The main function for the simulator, implemented as a test in tor's unit
 // testing framework. It contains of two parts.
 void test_circuitpadding_sim_main(void *arg);
+static void circuitpadding_sim_run_once(const char *client_file,
+                                        const char *relay_file);
 
 static int64_t circpad_sim_get_earliest_trace_time(void);
 
@@ -240,47 +242,21 @@ void
 test_circuitpadding_sim_main(void *arg)
 {
   (void)arg;
+  smartlist_t *client_list = NULL;
+  smartlist_t *relay_list = NULL;
+  file_status_t client_fstat = FN_NOENT, relay_fstat = FN_NOENT;
+
   if (circpad_sim_arg_client_trace && circpad_sim_arg_relay_trace) {
     log_notice(LD_CIRC, "got args %s %s",
                circpad_sim_arg_client_trace, circpad_sim_arg_relay_trace);
+    client_fstat = file_status(circpad_sim_arg_client_trace);
+    relay_fstat = file_status(circpad_sim_arg_relay_trace);
   } else {
     // mocked machines for testing, enabling the simulator to test itself
     log_notice(LD_CIRC, "no args, testing mode");
     MOCK(helper_add_client_machine, helper_add_client_machine_mock);
     MOCK(helper_add_relay_machine, helper_add_relay_machine_mock);
   }
-
-  client_trace = smartlist_new();
-  relay_trace = smartlist_new();
-
-  tt_assert(get_circpad_trace(circpad_sim_arg_client_trace, client_trace));
-  tt_assert(get_circpad_trace(circpad_sim_arg_relay_trace, relay_trace));
-
-  if (circpad_sim_get_earliest_trace_time() != 0) {
-    log_err(LD_BUG, "Trace strings must be normalized to start at 0!");
-    goto done;
-  }
-
-  // start with the circuitpadding testing glue
-  MOCK(circuitmux_attach_circuit, circuitmux_attach_circuit_mock);
-  MOCK(circuit_package_relay_cell, circuit_package_relay_cell_mock);
-  MOCK(node_get_by_id, node_get_by_id_mock);
-  dummy_channel.cmux = circuitmux_alloc();
-  client_side = TO_CIRCUIT(origin_circuit_new());
-  relay_side = TO_CIRCUIT(new_fake_orcirc(&dummy_channel, &dummy_channel));
-  tt_assert(client_side);
-  tt_assert(relay_side);
-  relay_side->purpose = CIRCUIT_PURPOSE_OR;
-  client_side->purpose = CIRCUIT_PURPOSE_C_GENERAL;
-  nodes_init();
-
-  monotime_init();
-  monotime_enable_test_mocking();
-  actual_mocked_monotime_start = MONOTIME_MOCK_START;
-  monotime_set_mock_time_nsec(actual_mocked_monotime_start);
-  monotime_coarse_set_mock_time_nsec(actual_mocked_monotime_start);
-  curr_mocked_time = actual_mocked_monotime_start;
-  timers_initialize();
 
   // Perform circpad_machines_init(); without calling it, don't want any of the
   // real or testing machines activated. Likely something we'll have to change
@@ -289,7 +265,114 @@ test_circuitpadding_sim_main(void *arg)
   relay_padding_machines = smartlist_new();
   helper_add_client_machine();
   helper_add_relay_machine();
+
+  nodes_init();
   set_network_participation(1);
+
+  MOCK(circuitmux_attach_circuit, circuitmux_attach_circuit_mock);
+  MOCK(circuit_package_relay_cell, circuit_package_relay_cell_mock);
+  MOCK(node_get_by_id, node_get_by_id_mock);
+
+  // Check if the trace files are directories
+  if (is_dir(client_fstat) &&
+      is_dir(relay_fstat)) {
+    // Read dirs into two lists, sort
+    client_list = tor_listdir(circpad_sim_arg_client_trace);
+    relay_list = tor_listdir(circpad_sim_arg_relay_trace);
+
+    // Check same number of files
+    if (smartlist_len(relay_list) != smartlist_len(client_list)) {
+        log_err(LD_CIRC,
+                  "Different number of trace files in trace dirs. "
+                  "File counts and filenames must match up in each dir.");
+        tt_assert(0);
+    }
+
+    // XXX: compare filenames? Kinda just a waste of CPU...
+
+    // loop over filenames
+    SMARTLIST_FOREACH_BEGIN(client_list, char *, trace) {
+      char *client_file, *relay_file;
+
+      client_file = tor_malloc(strlen(circpad_sim_arg_client_trace)+
+                               strlen(PATH_SEPARATOR)+
+                               strlen(trace));
+      relay_file = tor_malloc(strlen(circpad_sim_arg_relay_trace)+
+                               strlen(PATH_SEPARATOR)+
+                               strlen(trace));
+
+      tor_asprintf(&client_file, "%s%s%s",
+                   circpad_sim_arg_client_trace, PATH_SEPARATOR, trace);
+      tor_asprintf(&relay_file, "%s%s%s",
+                   circpad_sim_arg_relay_trace, PATH_SEPARATOR, trace);
+
+      // log tracename
+      log_info(LD_CIRC, "BATCH_TRACE=%s", trace);
+
+      circuitpadding_sim_run_once(client_file, relay_file);
+
+      // Increment circuit id for next trace.
+      circpad_sim_client_circid++;
+
+      // Reset time back to start
+      monotime_set_mock_time_nsec(0);
+      monotime_coarse_set_mock_time_nsec(0);
+      curr_mocked_time = 0;
+
+      tor_free(client_file);
+      tor_free(relay_file);
+    } SMARTLIST_FOREACH_END(trace);
+  } else {
+    circuitpadding_sim_run_once(circpad_sim_arg_client_trace,
+                                circpad_sim_arg_relay_trace);
+  }
+
+ done:
+    if (client_list && relay_list) {
+      SMARTLIST_FOREACH(client_list,
+                        char *, t, tor_free(t));
+      SMARTLIST_FOREACH(relay_list,
+                        char *, t, tor_free(t));
+      smartlist_free(client_list);
+      smartlist_free(relay_list);
+    }
+    UNMOCK(node_get_by_id);
+    UNMOCK(circuit_package_relay_cell);
+    UNMOCK(circuitmux_attach_circuit);
+    UNMOCK(helper_add_relay_machine);
+    UNMOCK(helper_add_client_machine);
+}
+
+static void
+circuitpadding_sim_run_once(const char *client_file, const char *relay_file)
+{
+  client_trace = smartlist_new();
+  relay_trace = smartlist_new();
+
+  tt_assert(get_circpad_trace(client_file, client_trace));
+  tt_assert(get_circpad_trace(relay_file, relay_trace));
+
+  if (circpad_sim_get_earliest_trace_time() != 0) {
+    log_err(LD_BUG, "Trace strings must be normalized to start at 0!");
+    goto done;
+  }
+
+  // start with the circuitpadding testing glue
+  dummy_channel.cmux = circuitmux_alloc();
+  client_side = TO_CIRCUIT(origin_circuit_new());
+  relay_side = TO_CIRCUIT(new_fake_orcirc(&dummy_channel, &dummy_channel));
+  tt_assert(client_side);
+  tt_assert(relay_side);
+  relay_side->purpose = CIRCUIT_PURPOSE_OR;
+  client_side->purpose = CIRCUIT_PURPOSE_C_GENERAL;
+
+  monotime_init();
+  monotime_enable_test_mocking();
+  actual_mocked_monotime_start = MONOTIME_MOCK_START;
+  monotime_set_mock_time_nsec(actual_mocked_monotime_start);
+  monotime_coarse_set_mock_time_nsec(actual_mocked_monotime_start);
+  curr_mocked_time = actual_mocked_monotime_start;
+  timers_initialize();
 
   /* If a custom circid was specified, use it */
   if (circpad_sim_client_circid) {
@@ -323,7 +406,7 @@ test_circuitpadding_sim_main(void *arg)
 
   // sanity check on estimated latency: can never be negative
   tt_int_op(sim_latency_mean, OP_GT, 0);
-  
+
   circpad_sim_main_loop();
 
   done:
@@ -332,11 +415,6 @@ test_circuitpadding_sim_main(void *arg)
     circuitmux_free(dummy_channel.cmux);
     timers_shutdown();
     monotime_disable_test_mocking();
-    UNMOCK(node_get_by_id);
-    UNMOCK(circuit_package_relay_cell);
-    UNMOCK(circuitmux_attach_circuit);
-    UNMOCK(helper_add_relay_machine);
-    UNMOCK(helper_add_client_machine);
     SMARTLIST_FOREACH(client_trace,
                       circpad_sim_event *, ev, circpad_sim_event_free(ev));
     SMARTLIST_FOREACH(relay_trace,
