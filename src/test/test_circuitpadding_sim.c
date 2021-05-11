@@ -296,10 +296,10 @@ test_circuitpadding_sim_main(void *arg)
 
       client_file = tor_malloc(strlen(circpad_sim_arg_client_trace)+
                                strlen(PATH_SEPARATOR)+
-                               strlen(trace));
+                               strlen(trace)+1);
       relay_file = tor_malloc(strlen(circpad_sim_arg_relay_trace)+
                                strlen(PATH_SEPARATOR)+
-                               strlen(trace));
+                               strlen(trace)+1);
 
       tor_asprintf(&client_file, "%s%s%s",
                    circpad_sim_arg_client_trace, PATH_SEPARATOR, trace);
