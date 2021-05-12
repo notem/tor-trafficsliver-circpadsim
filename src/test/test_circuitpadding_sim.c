@@ -435,6 +435,10 @@ circpad_sim_event_free(circpad_sim_event *event)
   if (event->type == CIRCPAD_SIM_CELL_EVENT_UNKNOWN)
     tor_free(event->internal);
 
+  // If this is a begin event, the event string is a strdup'ed timestamp
+  if (event->type == CIRCPAD_SIM_MACHINE_EVENT_AP_BEGIN)
+    tor_free(event->internal);
+
   tor_free(event);
 }
 
@@ -702,10 +706,12 @@ circpad_sim_main_loop(void)
       default:
         tor_assertf(0, "unknown sim event type, this should never happen");
     }
+
+    circpad_sim_event_free(next_event);
+    next_event = 0;
   }
   if (next_event != 0) {
-    tor_free(next_event->internal);
-    tor_free(next_event);
+    circpad_sim_event_free(next_event);
   }
 }
 
@@ -796,6 +802,7 @@ find_circpad_sim_event(char* line, circpad_sim_event *e)
   } else if (strstr(line, CIRCPAD_SIM_MACHINE_EVENT_AP_BEGIN_STR)) {
     e->type = CIRCPAD_SIM_MACHINE_EVENT_AP_BEGIN;
     e->event = tor_strdup((char*)(line+CIRCPAD_SIM_FORMAT_TIMESTAMP_LEN+1));
+    e->internal = (char*)e->event;
   } else {
     log_warn(LD_BUG,
              "Unknown event line %s! Please add this event to the simulator!",
