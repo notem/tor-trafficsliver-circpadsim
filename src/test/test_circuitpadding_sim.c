@@ -25,6 +25,7 @@
 #include "core/or/relay.h"
 #include "core/or/cell_st.h"
 #include "core/or/extendinfo.h"
+#include "core/crypto/relay_crypto.h"
 
 #include "feature/nodelist/nodelist.h"
 #include "feature/nodelist/routerstatus_st.h"
@@ -162,6 +163,7 @@ static void circuitmux_attach_circuit_mock(circuitmux_t *cmux, circuit_t *circ,
 static or_circuit_t * new_fake_orcirc(channel_t *nchan, channel_t *pchan);
 circid_t get_unique_circ_id_by_chan(channel_t *chan);
 static void free_fake_origin_circuit(origin_circuit_t *circ);
+static void free_fake_or_circuit(or_circuit_t *circ);
 static void simulate_single_hop_extend(circuit_t *client, circuit_t *mid_relay,
                            int padding);
 static void timers_advance_and_run(int64_t nsec_update);
@@ -410,9 +412,10 @@ circuitpadding_sim_run_once(const char *client_file, const char *relay_file)
   circpad_sim_main_loop();
 
   done:
-    free_fake_origin_circuit(TO_ORIGIN_CIRCUIT(client_side));
     circuitmux_detach_all_circuits(dummy_channel.cmux, NULL);
     circuitmux_free(dummy_channel.cmux);
+    free_fake_origin_circuit(TO_ORIGIN_CIRCUIT(client_side));
+    free_fake_or_circuit(TO_OR_CIRCUIT(relay_side));
     timers_shutdown();
     monotime_disable_test_mocking();
     SMARTLIST_FOREACH(client_trace,
@@ -975,6 +978,14 @@ free_fake_origin_circuit(origin_circuit_t *circ)
 {
   circpad_circuit_free_all_machineinfos(TO_CIRCUIT(circ));
   circuit_clear_cpath(circ);
+  tor_free(circ);
+}
+
+static void
+free_fake_or_circuit(or_circuit_t *circ)
+{
+  circpad_circuit_free_all_machineinfos(TO_CIRCUIT(circ));
+  relay_crypto_clear(&circ->crypto);
   tor_free(circ);
 }
 
