@@ -52,6 +52,10 @@ void circuit_build_failed(origin_circuit_t *circ);
  *  node in the circuit. (We are both the client and the last node in the
  *  circuit.) */
 #define CIRCLAUNCH_IS_IPV6_SELFTEST (1<<5)
+/** Flag to set when we do not want to cannibalise an other circuit */
+#define CIRCLAUNCH_DONT_CANNIBALIZE (1<<6)
+/** Flag to set when the circuit was initiated by a user's SOCKS request */
+#define CIRCLAUNCH_INITIATED_BY_USER (1<<7)
 
 origin_circuit_t *circuit_launch_by_extend_info(uint8_t purpose,
                                                 extend_info_t *info,

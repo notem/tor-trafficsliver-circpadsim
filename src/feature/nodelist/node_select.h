@@ -34,6 +34,8 @@ typedef enum router_crn_flags_t {
   CRN_RENDEZVOUS_V3 = 1<<6,
   /* On clients, only provide nodes that can initiate IPv6 extends. */
   CRN_INITIATE_IPV6_EXTEND = 1<<7,
+  /* Only allow choosing nodes that could be used as Guard nodes */
+  CRN_NEED_GUARD_STRICT = 1<<8,
 } router_crn_flags_t;
 
 /** Possible ways to weight routers when choosing one randomly.  See
@@ -82,6 +84,10 @@ const node_t *node_sl_choose_by_bandwidth(const smartlist_t *sl,
 double frac_nodes_with_descriptors(const smartlist_t *sl,
                                    bandwidth_weight_rule_t rule,
                                    int for_direct_conn);
+const node_t *router_choose_random_node_impl(smartlist_t *excludedsmartlist,
+                                            struct routerset_t *excludedset,
+                                            struct routerset_t *restrictedset,
+                                            router_crn_flags_t flags);
 const node_t *router_choose_random_node(smartlist_t *excludedsmartlist,
                                         struct routerset_t *excludedset,
                                         router_crn_flags_t flags);

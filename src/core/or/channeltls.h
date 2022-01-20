@@ -35,6 +35,11 @@ struct channel_tls_t {
 
 #endif /* defined(CHANNEL_OBJECT_PRIVATE) */
 
+channel_t * channel_tls_connect_impl(const tor_addr_t *addr, uint16_t port,
+                                     const char *id_digest,
+                                     const struct ed25519_public_key_t *ed_id,
+                                     const char* if_name);
+
 channel_t * channel_tls_connect(const tor_addr_t *addr, uint16_t port,
                                 const char *id_digest,
                                 const struct ed25519_public_key_t *ed_id);

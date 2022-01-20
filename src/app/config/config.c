@@ -105,6 +105,7 @@
 #include "feature/relay/transport_config.h"
 #include "feature/rend/rendclient.h"
 #include "feature/rend/rendservice.h"
+#include "feature/split/splitdefines.h"
 #include "lib/geoip/geoip.h"
 #include "feature/stats/geoip_stats.h"
 #include "lib/compress/compress.h"
@@ -457,6 +458,9 @@ static const config_var_t option_vars_[] = {
    * middles that they also control, to allow safe live-network
    * experimentation with new padding machines. */
   V_D(MiddleNodes,               ROUTERSET, NULL),
+  V_D(SplitEntryNodes,           ROUTERSET, NULL),
+  V_D(SplitMiddleNodes,          ROUTERSET, NULL),
+  V_D(SplitExitNodes,            ROUTERSET, NULL),
   V(ExitPolicy,                  LINELIST, NULL),
   V(ExitPolicyRejectPrivate,     BOOL,     "1"),
   V(ExitPolicyRejectLocalInterfaces, BOOL, "0"),
@@ -764,7 +768,8 @@ static const config_var_t option_vars_[] = {
   OBSOLETE("TestingCertMaxDownloadTries"),
   VAR_INVIS("___UsingTestNetworkDefaults", BOOL, UsingTestNetworkDefaults_,
             "0"),
-
+  V(SplitSubcircuits, POSINT, "3"),
+  V(SplitStrategy, STRING, "ROUND_ROBIN"),
   END_OF_CONFIG_VARS
 };
 
@@ -1975,6 +1980,9 @@ options_need_geoip_info(const or_options_t *options, const char **reason_out)
     routerset_needs_geoip(options->EntryNodes) ||
     routerset_needs_geoip(options->ExitNodes) ||
     routerset_needs_geoip(options->MiddleNodes) ||
+    routerset_needs_geoip(options->SplitEntryNodes) ||
+    routerset_needs_geoip(options->SplitMiddleNodes) ||
+    routerset_needs_geoip(options->SplitExitNodes) ||
     routerset_needs_geoip(options->ExcludeExitNodes) ||
     routerset_needs_geoip(options->ExcludeNodes) ||
     routerset_needs_geoip(options->HSLayer2Nodes) ||
@@ -2026,6 +2034,9 @@ options_transition_affects_guards(const or_options_t *old_options,
   YES_IF_CHANGED_BOOL(FascistFirewall);
   YES_IF_CHANGED_ROUTERSET(ExcludeNodes);
   YES_IF_CHANGED_ROUTERSET(EntryNodes);
+  YES_IF_CHANGED_ROUTERSET(SplitEntryNodes);
+  YES_IF_CHANGED_ROUTERSET(SplitMiddleNodes);
+  YES_IF_CHANGED_ROUTERSET(SplitExitNodes);
   YES_IF_CHANGED_SMARTLIST(FirewallPorts);
   YES_IF_CHANGED_LINELIST(Bridges);
   YES_IF_CHANGED_LINELIST(ReachableORAddresses);
@@ -2312,6 +2323,9 @@ options_act,(const or_options_t *old_options))
         !routerset_equal(old_options->HSLayer3Nodes,
                          options->HSLayer3Nodes) ||
         !routerset_equal(old_options->MiddleNodes, options->MiddleNodes) ||
+        !routerset_equal(old_options->SplitEntryNodes, options->SplitEntryNodes) ||
+        !routerset_equal(old_options->SplitMiddleNodes, options->SplitMiddleNodes) ||
+        !routerset_equal(old_options->SplitExitNodes, options->SplitExitNodes) ||
         options->StrictNodes != old_options->StrictNodes) {
       log_info(LD_CIRC,
                "Changed to using entry guards or bridges, or changed "
@@ -4043,6 +4057,9 @@ options_validate_cb(const void *old_options_, void *options_, char **msg)
   if (options_validate_scheduler(options, msg) < 0) {
     return -1;
   }
+
+  if (options->SplitSubcircuits < 1 || options->SplitSubcircuits > MAX_SUBCIRCS)
+    REJECT("SplitSubcircuits must be between 0 and MAX_SUBCIRCS");
 
   return 0;
 }

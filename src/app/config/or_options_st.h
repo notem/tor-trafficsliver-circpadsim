@@ -111,6 +111,18 @@ struct or_options_t {
   struct routerset_t *MiddleNodes; /**< Structure containing nicknames,
                              * digests, country codes and IP address patterns
                              * of ORs to consider as middles. */
+  routerset_t *SplitEntryNodes; /**< Structure containing nicknames, digests,
+                                 * country codes and IP address patterns of ORs to
+                                 * consider as entry nodes.
+                                 * ATTENTION: must contain a different entry OR for
+                                 * every possible sub-circuit. */
+  routerset_t *SplitMiddleNodes; /**< Structure containing nicknames, digests,
+                                  * country codes and IP address patterns of ORs to
+                                  * consider as middle nodes. (Reintroduced for the
+                                  * evaluation of the split module) */
+  routerset_t *SplitExitNodes; /**< Structure containing nicknames, digests,
+                                * country codes and IP address patterns of ORs to
+                                * consider as exit ORs. */
   struct routerset_t *EntryNodes;/**< Structure containing nicknames, digests,
                            * country codes and IP address patterns of ORs to
                            * consider as entry points. */
@@ -1059,6 +1071,12 @@ struct or_options_t {
 
   /** Autobool: Do we refuse single hop client rendezvous? */
   int DoSRefuseSingleHopClientRendezvous;
+
+  /** Split module: How many sub-circuits do we build per circuit */
+  int SplitSubcircuits;
+
+  /** Split module: Default splitting strategy */
+  char *SplitStrategy;
 
   /** Interval: how long without activity does it take for a client
    * to become dormant?

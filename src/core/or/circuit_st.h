@@ -13,6 +13,7 @@
 #define CIRCUIT_ST_H
 
 #include "core/or/or.h"
+#include "feature/split/spliteval.h"
 
 #include "lib/container/handles.h"
 
@@ -253,6 +254,12 @@ struct circuit_t {
    * at info level.
    */
   uint32_t padding_circid;
+
+#ifdef SPLIT_EVAL
+  /** Cache for time values which is used for the split performance
+   * evaluation. */
+  struct timespec temp;
+#endif /* SPLIT_EVAL */
 };
 
 #endif /* !defined(CIRCUIT_ST_H) */

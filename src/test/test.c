@@ -731,6 +731,7 @@ struct testgroup_t testgroups[] = {
   { "hs_descriptor/", hs_descriptor },
   { "hs_dos/", hs_dos_tests },
   { "hs_intropoint/", hs_intropoint_tests },
+  { "instruction/", instruction_tests },
   { "hs_metrics/", hs_metrics_tests },
   { "hs_ntor/", hs_ntor_tests },
   { "hs_ob/", hs_ob_tests },
@@ -777,6 +778,7 @@ struct testgroup_t testgroups[] = {
   { "stats/", stats_tests },
   { "status/" , status_tests },
   { "storagedir/", storagedir_tests },
+  { "subcirc_list/", subcirc_list_tests},
   { "token_bucket/", token_bucket_tests },
   { "tortls/", tortls_tests },
 #ifndef ENABLE_NSS

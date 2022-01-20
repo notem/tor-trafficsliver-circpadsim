@@ -838,7 +838,10 @@ handle_control_extendcircuit(control_connection_t *conn,
       control_write_endreply(conn, 551, "Couldn't start circuit");
       goto done;
     }
-    circuit_append_new_exit(circ, info);
+    if (circuit_append_new_exit(circ, info)) {
+      /* already marked for close */
+      goto done;
+    }
     if (circ->build_state->desired_path_len > 1) {
       circ->build_state->onehop_tunnel = 0;
     }

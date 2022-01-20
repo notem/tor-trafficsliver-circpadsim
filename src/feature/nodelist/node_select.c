@@ -940,6 +940,7 @@ nodelist_subtract(smartlist_t *sl, const smartlist_t *excluded)
 static const node_t *
 router_choose_random_node_helper(smartlist_t *excludednodes,
                                  routerset_t *excludedset,
+                                 routerset_t *restrictedset,
                                  router_crn_flags_t flags,
                                  bandwidth_weight_rule_t rule)
 {
@@ -960,6 +961,13 @@ router_choose_random_node_helper(smartlist_t *excludednodes,
               smartlist_len(sl));
   }
 
+  if (restrictedset) {
+    routerset_intersect_nodes(sl, restrictedset);
+    log_debug(LD_CIRC,
+              "We intersected with restrictedset, leaving %d nodes.",
+              smartlist_len(sl));
+  }
+
   // Always weight by bandwidth
   choice = node_sl_choose_by_bandwidth(sl, rule);
 
@@ -968,7 +976,8 @@ router_choose_random_node_helper(smartlist_t *excludednodes,
   return choice;
 }
 
-/** Return a random running node from the nodelist. Never pick a node that is
+/** Return a random running node from the nodelist that is in
+ * <b>restrictedset</b> (when provided, i.e. != NULL). Never
  * in <b>excludedsmartlist</b>, or which matches <b>excludedset</b>, even if
  * they are the only nodes available.
  *
@@ -976,15 +985,17 @@ router_choose_random_node_helper(smartlist_t *excludednodes,
  * router_add_running_nodes_to_smartlist() for details.
  */
 const node_t *
-router_choose_random_node(smartlist_t *excludedsmartlist,
-                          routerset_t *excludedset,
-                          router_crn_flags_t flags)
+router_choose_random_node_impl(smartlist_t *excludedsmartlist,
+                               routerset_t *excludedset,
+                               routerset_t *restrictedset,
+                               router_crn_flags_t flags)
 {
   /* A limited set of flags, used for fallback node selection.
    */
   const bool need_uptime = (flags & CRN_NEED_UPTIME) != 0;
   const bool need_capacity = (flags & CRN_NEED_CAPACITY) != 0;
   const bool need_guard = (flags & CRN_NEED_GUARD) != 0;
+  const bool need_guard_strict = (flags & CRN_NEED_GUARD_STRICT) != 0;
   const bool pref_addr = (flags & CRN_PREF_ADDR) != 0;
 
   smartlist_t *excludednodes=smartlist_new();
@@ -1006,6 +1017,7 @@ router_choose_random_node(smartlist_t *excludedsmartlist,
 
   choice = router_choose_random_node_helper(excludednodes,
                                             excludedset,
+                                            restrictedset,
                                             flags,
                                             rule);
 
@@ -1022,6 +1034,7 @@ router_choose_random_node(smartlist_t *excludedsmartlist,
                 CRN_PREF_ADDR);
     choice = router_choose_random_node_helper(excludednodes,
                                               excludedset,
+                                              restrictedset,
                                               flags,
                                               rule);
   }
@@ -1031,6 +1044,17 @@ router_choose_random_node(smartlist_t *excludedsmartlist,
              "No available nodes when trying to choose node. Failing.");
   }
   return choice;
+}
+
+/** Wrapper for router_choose_random_node that we need because we want
+ * to specify a restrictedset to choose the node from */
+const node_t *
+router_choose_random_node(smartlist_t *excludedsmartlist,
+                          routerset_t *excludedset,
+                          router_crn_flags_t flags) {
+  return router_choose_random_node_impl(excludedsmartlist,
+                                        excludedset,
+                                        NULL, flags);
 }
 
 /** Try to find a running directory authority. Flags are as for

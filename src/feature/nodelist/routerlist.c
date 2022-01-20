@@ -107,6 +107,7 @@
 #include "feature/nodelist/routerinfo_st.h"
 #include "feature/nodelist/routerlist_st.h"
 #include "feature/nodelist/vote_routerstatus_st.h"
+#include "feature/client/entrynodes.h"
 
 #include "lib/crypt_ops/digestset.h"
 
@@ -555,6 +556,7 @@ router_can_choose_node(const node_t *node, int flags)
   const bool need_uptime = (flags & CRN_NEED_UPTIME) != 0;
   const bool need_capacity = (flags & CRN_NEED_CAPACITY) != 0;
   const bool need_guard = (flags & CRN_NEED_GUARD) != 0;
+  const bool need_guard_strict = (flags & CRN_NEED_GUARD_STRICT) != 0;
   const bool need_desc = (flags & CRN_NEED_DESC) != 0;
   const bool pref_addr = (flags & CRN_PREF_ADDR) != 0;
   const bool direct_conn = (flags & CRN_DIRECT_CONN) != 0;
@@ -577,6 +579,9 @@ router_can_choose_node(const node_t *node, int flags)
       return false;
   }
   if (node_is_unreliable(node, need_uptime, need_capacity, need_guard))
+    return false;
+  if (need_guard_strict && (!node_is_possible_guard(node) ||
+      !node_passes_guard_filter(get_options(),node)))
     return false;
   /* Don't choose nodes if we are certain they can't do EXTEND2 cells */
   if (node->rs && !routerstatus_version_supports_extend2_cells(node->rs, 1))
@@ -3291,6 +3296,12 @@ refresh_all_country_info(void)
     routerset_refresh_countries(options->ExitNodes);
   if (options->MiddleNodes)
     routerset_refresh_countries(options->MiddleNodes);
+  if (options->SplitEntryNodes)
+    routerset_refresh_countries(options->SplitEntryNodes);
+  if (options->SplitMiddleNodes)
+    routerset_refresh_countries(options->SplitMiddleNodes);
+  if (options->SplitExitNodes)
+    routerset_refresh_countries(options->SplitExitNodes);
   if (options->ExcludeNodes)
     routerset_refresh_countries(options->ExcludeNodes);
   if (options->ExcludeExitNodes)
