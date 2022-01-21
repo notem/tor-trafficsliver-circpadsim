@@ -1,6 +1,0 @@
-{
-    "files.associations": {
-        "bwhist.h": "c",
-        "*.inc": "cpp"
-    }
-}
