@@ -7,7 +7,7 @@
 #define MODULE_SPLIT_INTERNAL
 #include "feature/split/splitor.h"
 
-#include "core/or/or.h"
+//#include "core/or/or.h"
 #include "core/or/circuitlist.h"
 #include "core/or/relay.h"
 #include "core/or/cell_st.h"
@@ -179,10 +179,10 @@ split_data_or_cookie_hash(const split_data_or_t* s)
 }
 
 HT_PROTOTYPE(split_data_or_cookie_ht, split_data_or_t, node,
-             split_data_or_cookie_hash, split_data_or_cookie_equal)
+             split_data_or_cookie_hash, split_data_or_cookie_equal);
 HT_GENERATE2(split_data_or_cookie_ht, split_data_or_t, node,
              split_data_or_cookie_hash, split_data_or_cookie_equal,
-             0.6, tor_reallocarray_, tor_free_)
+             0.6, tor_reallocarray_, tor_free_);
 
 /** Set the cookie state of <b>split_data</b> to SPLIT_COOKIE_STATE_VALID
  * and add its split_data_or to split_data_or_cookie_map.

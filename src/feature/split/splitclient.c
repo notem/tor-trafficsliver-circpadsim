@@ -5,6 +5,7 @@
  **/
 
 #define MODULE_SPLIT_INTERNAL
+#define CRYPT_PATH_PRIVATE
 #include "feature/split/splitclient.h"
 
 #include "app/config/config.h"
@@ -18,6 +19,8 @@
 #include "core/or/crypt_path_st.h"
 #include "core/or/cpath_build_state_st.h"
 #include "core/or/extend_info_st.h"
+#include "core/or/extendinfo.h"
+#include "core/or/crypt_path.h"
 #include "feature/nodelist/nodelist.h"
 #include "feature/split/splitcommon.h"
 #include "feature/split/splitdefines.h"
@@ -515,11 +518,11 @@ split_data_append_cpath(split_data_t* split_data, origin_circuit_t* circ)
     new->magic = CRYPT_PATH_MAGIC;
     new->state = CPATH_STATE_OPEN;
     new->extend_info = extend_info_dup(cpath->extend_info);
-    memcpy(&new->crypto, &cpath->crypto, sizeof(relay_crypto_t));
-    tor_assert(new->crypto.ref_count);
-    *new->crypto.ref_count += 1;
+    memcpy(&new->pvt_crypto, &cpath->pvt_crypto, sizeof(relay_crypto_t));
+    tor_assert(new->pvt_crypto.ref_count);
+    *new->pvt_crypto.ref_count += 1;
 
-    onion_append_to_cpath(&circ->cpath, new);
+    cpath_extend_linked_list(&circ->cpath, new);
 
     cpath = cpath->next;
   } while (cpath != source);

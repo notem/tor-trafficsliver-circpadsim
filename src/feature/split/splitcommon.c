@@ -6,6 +6,7 @@
  **/
 
 #define MODULE_SPLIT_INTERNAL
+#define CRYPT_PATH_PRIVATE
 #include "feature/split/splitcommon.h"
 
 #include "core/or/or.h"
@@ -18,7 +19,10 @@
 #include "core/or/or_circuit_st.h"
 #include "core/or/origin_circuit_st.h"
 #include "core/or/extend_info_st.h"
+#include "core/or/extendinfo.h"
+#include "core/or/crypt_path.h"
 #include "feature/control/control.h"
+#include "feature/control/control_events.h"
 #include "feature/split/cell_buffer.h"
 #include "feature/split/splitclient.h"
 #include "feature/split/splitdefines.h"
@@ -686,9 +690,9 @@ split_data_client_init(split_data_client_t* split_data_client,
     tor_assert(cpath);
     tor_assert(cpath->state == CPATH_STATE_OPEN);
 
-    if (!cpath->crypto.ref_count) {
-      cpath->crypto.ref_count = tor_malloc_zero(sizeof(int));
-      *cpath->crypto.ref_count = 1;
+    if (!cpath->pvt_crypto.ref_count) {
+      cpath->pvt_crypto.ref_count = tor_malloc_zero(sizeof(int));
+      *cpath->pvt_crypto.ref_count = 1;
     }
 
     new = tor_malloc_zero(sizeof(crypt_path_t));
@@ -696,11 +700,11 @@ split_data_client_init(split_data_client_t* split_data_client,
     tor_assert(cpath->state == CPATH_STATE_OPEN);
     new->state = CPATH_STATE_OPEN;
     new->extend_info = extend_info_dup(cpath->extend_info);
-    memcpy(&new->crypto, &cpath->crypto, sizeof(relay_crypto_t));
-    tor_assert(new->crypto.ref_count);
-    *new->crypto.ref_count += 1;
+    memcpy(&new->pvt_crypto, &cpath->pvt_crypto, sizeof(relay_crypto_t));
+    tor_assert(new->pvt_crypto.ref_count);
+    *new->pvt_crypto.ref_count += 1;
 
-    onion_append_to_cpath(&split_data_client->remaining_cpath, new);
+    cpath_extend_linked_list(&split_data_client->remaining_cpath, new);
 
     cpath = cpath->next;
   } while (cpath != base->cpath);
@@ -727,10 +731,10 @@ split_data_client_free_(split_data_client_t* split_data_client)
     while (cpath->next && cpath->next != split_data_client->remaining_cpath) {
       victim = cpath;
       cpath = victim->next;
-      circuit_free_cpath_node(victim);
+      cpath_free(victim);
     }
 
-    circuit_free_cpath_node(cpath);
+    cpath_free(cpath);
     split_data_client->remaining_cpath = NULL;
   }
 

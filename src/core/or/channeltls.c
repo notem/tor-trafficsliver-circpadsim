@@ -192,6 +192,7 @@ channel_tls_common_init(channel_tls_t *tlschan)
  * IFNAMSIZ bytes and chooses an arbitrary interface if
  * if_name == "".
  */
+channel_t *
 channel_tls_connect_impl(const tor_addr_t *addr, uint16_t port,
                          const char *id_digest,
                          const ed25519_public_key_t *ed_id,

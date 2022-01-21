@@ -105,8 +105,8 @@ static const node_t *choose_good_middle_server(uint8_t purpose,
  * IFNAMSIZ bytes and chooses an arbitrary interface if
  * if_name == "".
  */
-MOCK_IMPL(channel_t *,
-channel_connect_for_circuit_impl,(const extend_info_t *ei, const char* if_name))
+static channel_t *
+channel_connect_for_circuit_impl(const extend_info_t *ei, const char* if_name)
 {
   channel_t *chan;
 
@@ -126,10 +126,10 @@ channel_connect_for_circuit_impl,(const extend_info_t *ei, const char* if_name))
  * the split module: We want to be able to pass the name of the
  * interface to use for the new connection.
  */
-MOCK_IMPL(channel_t *,
-channel_connect_for_circuit,(const ed25519_public_key_t *ed_id))
+MOCK_IMPL(channel_t *, 
+channel_connect_for_circuit,(const extend_info_t *ei))
 {
-   return channel_connect_for_circuit_impl(ed_id, "");
+   return channel_connect_for_circuit_impl(ei, "");
 }
 
 
