@@ -79,6 +79,7 @@
 #include "feature/nodelist/nodelist.h"
 
 #include "app/config/config.h"
+#include "feature/split/splitdefines.h"
 
 static inline circpad_circuit_state_t circpad_circuit_state(
                                         origin_circuit_t *circ);
@@ -3216,13 +3217,15 @@ void
 circpad_trace_event(const char *event, const circuit_t *circ)
 {
   uint32_t circ_id = 0;
+  subcirc_id_t subcirc_id = 0;
 
   if (CIRCUIT_IS_ORIGIN(circ)) {
     circ_id = CONST_TO_ORIGIN_CIRCUIT(circ)->global_identifier;
+    subcirc_id = CONST_TO_ORIGIN_CIRCUIT(circ)->cpath->subcirc->id;
 
     log_fn(LOG_INFO, LD_CIRC,
-           "timestamp=%"PRIu64" source=client client_circ_id=%d event=%s",
-           monotime_absolute_nsec(), circ_id, event);
+           "timestamp=%"PRIu64" source=client client_circ_id=%d subcirc=%d event=%s",
+           monotime_absolute_nsec(), circ_id, subcirc_id, event);
   } else if (circ->padding_circid) {
     circ_id = circ->padding_circid;
 
