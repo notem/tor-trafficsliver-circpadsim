@@ -77,6 +77,7 @@
 #include "core/or/extend_info_st.h"
 #include "core/crypto/relay_crypto.h"
 #include "feature/nodelist/nodelist.h"
+#include "feature/split/splitcommon.h"
 
 #include "app/config/config.h"
 #include "feature/split/splitdefines.h"
@@ -3217,15 +3218,44 @@ void
 circpad_trace_event(const char *event, const circuit_t *circ)
 {
   uint32_t circ_id = 0;
-  subcirc_id_t subcirc_id = 0;
+  subcirc_id_t subcirc_id = -1;
 
   if (CIRCUIT_IS_ORIGIN(circ)) {
     circ_id = CONST_TO_ORIGIN_CIRCUIT(circ)->global_identifier;
-    subcirc_id = CONST_TO_ORIGIN_CIRCUIT(circ)->cpath->subcirc->id;
+    crypt_path_t* cpath = CONST_TO_ORIGIN_CIRCUIT(circ)->cpath;
+    circuit_t* base = NULL;
 
-    log_fn(LOG_INFO, LD_CIRC,
-           "timestamp=%"PRIu64" source=client client_circ_id=%d subcirc=%d event=%s",
-           monotime_absolute_nsec(), circ_id, subcirc_id, event);
+    if (cpath) {
+      /* search for split_datas on the path to get subcirc id */
+      do {
+
+        if (cpath->split_data) {
+          tor_assert(cpath->subcirc);
+          if (cpath->subcirc->state == SUBCIRC_STATE_ADDED) {
+            base = split_data_get_base(cpath->split_data, 1);
+            subcirc_id = cpath->subcirc->id;
+            break;
+          }
+        }
+
+        if (!cpath->next)
+          /* stop the search */
+          break;
+
+        cpath = cpath->next;
+      } while (cpath != CONST_TO_ORIGIN_CIRCUIT(circ)->cpath);
+    }
+
+    if (base) {
+      uint32_t base_id = TO_ORIGIN_CIRCUIT(base)->global_identifier;
+      log_fn(LOG_INFO, LD_CIRC,
+             "timestamp=%"PRIu64" source=client client_circ_id=%d base_id=%d subcirc=%d event=%s",
+             monotime_absolute_nsec(), circ_id, base_id, subcirc_id, event);
+    } else {
+      log_fn(LOG_INFO, LD_CIRC,
+             "timestamp=%"PRIu64" source=client client_circ_id=%d event=%s",
+             monotime_absolute_nsec(), circ_id, event);
+    }
   } else if (circ->padding_circid) {
     circ_id = circ->padding_circid;
 

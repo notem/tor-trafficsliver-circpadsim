@@ -229,7 +229,7 @@ circuit_update_channel_usage(circuit_t *circ, cell_t *cell)
 int
 circuit_receive_relay_cell_impl(cell_t *cell, circuit_t *circ,
                                 cell_direction_t cell_direction,
-                                crypt_path_t* start_at)
+                                crypt_path_t* start_at, bool buffered)
 {
   channel_t *chan = NULL;
   crypt_path_t *layer_hint=NULL;
@@ -288,9 +288,26 @@ circuit_receive_relay_cell_impl(cell_t *cell, circuit_t *circ,
     log_fn(LOG_PROTOCOL_WARN, LD_PROTOCOL,
            "relay crypt failed. Dropping connection.");
     return -END_CIRC_REASON_INTERNAL;
-  } else if (r == 1) {
-    /* split cell was buffered */
-    return 1;
+  } else {
+    /* log */
+    if (!buffered) {
+      if (recognized || r == 1) {
+        relay_header_t rh;
+        tor_assert(cell);
+        tor_assert(circ);
+        relay_header_unpack(&rh, cell->payload);
+
+        /* Tell circpad that we've received a recognized cell */
+        circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
+      } else {
+        /* not recognized. inform circpad and pass it on. */
+        circpad_deliver_unrecognized_cell_events(circ, cell_direction);
+      }
+    }
+    if (r == 1) {
+      /* split cell was buffered */
+      return 1;
+    }
   }
 
   circuit_update_channel_usage(circ, cell);
@@ -348,7 +365,7 @@ circuit_receive_relay_cell_impl(cell_t *cell, circuit_t *circ,
   }
 
   /* not recognized. inform circpad and pass it on. */
-  circpad_deliver_unrecognized_cell_events(circ, cell_direction);
+  //circpad_deliver_unrecognized_cell_events(circ, cell_direction);
 
   if (cell_direction == CELL_DIRECTION_OUT) {
     /* unrecognised, outward relay cells can only arrive on or_circuits */
@@ -479,7 +496,7 @@ circuit_receive_relay_cell(cell_t *cell, circuit_t *circ,
     start_at = TO_ORIGIN_CIRCUIT(circ)->cpath;
 
   retval = circuit_receive_relay_cell_impl(cell, circ, cell_direction,
-                                           start_at);
+                                           start_at, false);
 
   if (retval == 0 &&
       ((cell_direction == CELL_DIRECTION_OUT && CIRCUIT_IS_ORCIRC(circ)) ||
@@ -828,7 +845,8 @@ relay_send_command_from_edge_,(streamid_t stream_id, circuit_t *circ,
             cell_direction == CELL_DIRECTION_OUT ? "forward" : "backward");
 
   /* Tell circpad we're sending a relay cell */
-  circpad_deliver_sent_relay_cell_events(circ, relay_command);
+  //circpad_deliver_sent_relay_cell_events(circ, relay_command);
+  circpad_deliver_sent_relay_cell_events(split_actual_circ, relay_command);
 
   /* If we are sending an END cell and this circuit is used for a tunneled
    * directory request, advance its state. */
@@ -2305,7 +2323,7 @@ connection_edge_process_relay_cell(cell_t *cell, circuit_t *circ,
   }
 
   /* Tell circpad that we've received a recognized cell */
-  circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
+  //circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
 
   /* either conn is NULL, in which case we've got a control cell, or else
    * conn points to the recognized stream. */

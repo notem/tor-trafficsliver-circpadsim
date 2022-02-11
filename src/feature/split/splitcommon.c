@@ -1497,7 +1497,7 @@ split_handle_buffered_cells(circuit_t* circ)
           tor_assert(cpath->next != TO_ORIGIN_CIRCUIT(base)->cpath);
 
           if ((reason = circuit_receive_relay_cell_impl(&buf_cell->cell, base,
-                CELL_DIRECTION_IN, cpath->next)) < 0) {
+                CELL_DIRECTION_IN, cpath->next, true)) < 0) {
             log_warn(LD_CIRC,"circuit_receive_relay_cell backward failed. "
                      "Closing.");
             /* Always emit a bandwidth event for closed circs */
