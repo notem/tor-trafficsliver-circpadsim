@@ -291,17 +291,24 @@ circuit_receive_relay_cell_impl(cell_t *cell, circuit_t *circ,
   } else {
     /* log */
     if (!buffered) {
-      if (recognized || r == 1) {
-        relay_header_t rh;
-        tor_assert(cell);
-        tor_assert(circ);
-        relay_header_unpack(&rh, cell->payload);
-
-        /* Tell circpad that we've received a recognized cell */
-        circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
-      } else {
-        /* not recognized. inform circpad and pass it on. */
-        circpad_deliver_unrecognized_cell_events(circ, cell_direction);
+      relay_header_t rh;
+      tor_assert(cell);
+      tor_assert(circ);
+      relay_header_unpack(&rh, cell->payload);
+      if (CIRCUIT_IS_ORIGIN(circ)) {
+        if (r == 1) {
+          circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
+        } else if (recognized) {
+          if ((base = split_is_relevant(circ, layer_hint))) {
+            subcircuit_t* next_subcirc =
+                split_get_next_subcirc(base, layer_hint, CELL_DIRECTION_IN);
+            circpad_deliver_recognized_relay_cell_events(next_subcirc->circ, rh.command, layer_hint);
+          } else {
+            circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
+          }
+        } 
+      } else if (recognized) {
+          circpad_deliver_recognized_relay_cell_events(circ, rh.command, layer_hint);
       }
     }
     if (r == 1) {
@@ -365,7 +372,7 @@ circuit_receive_relay_cell_impl(cell_t *cell, circuit_t *circ,
   }
 
   /* not recognized. inform circpad and pass it on. */
-  //circpad_deliver_unrecognized_cell_events(circ, cell_direction);
+  circpad_deliver_unrecognized_cell_events(circ, cell_direction);
 
   if (cell_direction == CELL_DIRECTION_OUT) {
     /* unrecognised, outward relay cells can only arrive on or_circuits */

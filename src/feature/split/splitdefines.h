@@ -19,14 +19,14 @@
 /* uncomment for preventing Tor from building circuits preemptively */
 /* If you start Tor in a server mode, keep the configuration line commented. */
 /* If you start Tor in a client mode, better keep the configuration line uncommented. */
-#define SPLIT_DISABLE_PREEMPTIVE_CIRCUITS
+//#define SPLIT_DISABLE_PREEMPTIVE_CIRCUITS
 
 /* uncomment to disable Nagle's Algorithm for TCP sockets */
 #define SPLIT_DISABLE_NAGLE
 
 /* uncomment for forcing Tor to launch a new circuit for each new SOCKS
  * connection */
-#define SPLIT_SOCKS_LAUNCH_NEW_CIRCUIT
+//#define SPLIT_SOCKS_LAUNCH_NEW_CIRCUIT
 
 /* null-terminated string of the default interface to use for new
  * split circuits (provide an empty string "" to allow the use of
@@ -42,7 +42,7 @@
 #define MAX_SUBCIRCS 5
 
 /* default number of sub-circuits we want to establish per circuit */
-#define SPLIT_DEFAULT_SUBCIRCS 3
+#define SPLIT_DEFAULT_SUBCIRCS 5
 
 /* number of primary guards that must be choosen at minimum */
 #define SPLIT_MIN_NUM_PRIMARY_GUARDS 2 + SPLIT_DEFAULT_SUBCIRCS
@@ -53,7 +53,7 @@
 
 /* split strategy that is used as default by new split circuits
  * (refers to enum split_strategy_t in file splitstrategy.h) */
-#define SPLIT_DEFAULT_STRATEGY SPLIT_STRATEGY_ROUND_ROBIN
+#define SPLIT_DEFAULT_STRATEGY SPLIT_STRATEGY_BATCHED_WEIGHTED_RANDOM
 
 /* maximum number of split instructions that can be stored in one direction */
 #define MAX_NUM_SPLIT_INSTRUCTIONS 8

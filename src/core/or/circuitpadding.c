@@ -3249,7 +3249,7 @@ circpad_trace_event(const char *event, const circuit_t *circ)
     if (base) {
       uint32_t base_id = TO_ORIGIN_CIRCUIT(base)->global_identifier;
       log_fn(LOG_INFO, LD_CIRC,
-             "timestamp=%"PRIu64" source=client client_circ_id=%d base_id=%d subcirc=%d event=%s",
+             "timestamp=%"PRIu64" source=client client_circ_id=%d base_circ_id=%d sub_circ_id=%d event=%s",
              monotime_absolute_nsec(), circ_id, base_id, subcirc_id, event);
     } else {
       log_fn(LOG_INFO, LD_CIRC,
